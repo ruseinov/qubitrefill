@@ -3,8 +3,8 @@
 Pay for a Bitrefill product (gift card, top-up, eSIM) with the **worst-performing crypto** in your
 portfolio — the asset with the lowest expected return μ — then retune the portfolio without it.
 
-The agent logic lives in [`SKILL.md`](./SKILL.md); this README is the operator's quick-start.
-Purchase mechanics are delegated to the sibling [`bitrefill`](../bitrefill/SKILL.md) skill.
+The agent logic lives in [`SKILL.md`](skills/qupick/SKILL.md); this README is the operator's quick-start.
+Purchase mechanics are delegated to the sibling [`bitrefill`](skills/bitrefill/SKILL.md) skill.
 
 ## Prerequisites
 
@@ -82,7 +82,5 @@ Retune:  drop BTC, re-optimize over the remaining 10 currencies
 
 - The agent **never buys without explicit approval** — it always pauses at step 6.
 - Codes deliver instantly and are **non-refundable**; treat redemption codes as cash and redeem ASAP.
-- Use a dedicated, low-balance wallet. Full policy: [`../bitrefill/references/safeguards.md`](../bitrefill/references/safeguards.md).
+- Use a dedicated, low-balance wallet. Full policy: [`safeguards.md`](skills/bitrefill/references/safeguards.md).
 - The step-7 retune is irreversible — the spent asset leaves the basket until you re-add it.
-```
-```
