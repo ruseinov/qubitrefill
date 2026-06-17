@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quantum Asset Selection — Quip Network</title>
+<meta name="description" content="Optimizing portfolios on a quantum computer: framing the basket as a QUBO — assets as nodes, couplings as edges — then racing classical and quantum solvers for the best allocation. By the engineers behind Quip Network." />
+<meta property="og:title" content="Quantum Asset Selection — Quip Network" />
+<meta property="og:description" content="Framing the basket as a QUBO, then racing classical and quantum solvers for the best allocation." />
+<meta property="og:image" content="assets/wells.png" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="assets/quip-mark.png" />
+<style>
+  :root{
+    --ink:#0c1410;
+    --ink-soft:#3a4a42;
+    --muted:#6b7a72;
+    --line:#e4eae6;
+    --paper:#ffffff;
+    --paper-2:#f6f9f7;
+    --green:#16a34a;
+    --green-bright:#22c55e;
+    --teal:#0d9488;
+    --red:#e0564f;
+    --radius:18px;
+    --maxw:1120px;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;color:var(--ink);background:var(--paper);
+    font-family:var(--sans);font-size:17px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:var(--green);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;line-height:1.1;margin:0}
+  .eyebrow{
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--green);font-weight:600;margin:0 0 18px;
+  }
+  .lead{font-size:1.18rem;color:var(--ink-soft);max-width:54ch}
+
+  /* ---------- Nav ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.4) blur(10px);
+    background:rgba(255,255,255,.78);border-bottom:1px solid var(--line);
+  }
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand img.mark{width:26px;height:26px}
+  .brand img.word{height:19px;margin-top:3px}
+  .nav nav{display:flex;gap:26px;font-size:14.5px}
+  .nav nav a{color:var(--ink-soft);font-weight:500}
+  .nav nav a:hover{color:var(--green);text-decoration:none}
+  @media(max-width:720px){.nav nav{display:none}}
+
+  /* ---------- Hero ---------- */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero .bg{
+    position:absolute;inset:0;background:url('assets/hero-bg.png') center/cover no-repeat;
+    opacity:.55;
+  }
+  .hero .bg::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.92));}
+  .hero .wrap{position:relative;padding:96px 24px 88px;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+  .hero h1{font-size:clamp(2.6rem,5.4vw,4.1rem)}
+  .hero h1 .accent{color:var(--green)}
+  .hero p.tagline{margin:22px 0 0;font-size:1.15rem;color:var(--ink-soft);max-width:46ch}
+  .hero .cta{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
+    font-weight:600;font-size:15px;border:1.5px solid transparent;transition:.18s;
+  }
+  .btn.primary{background:var(--green);color:#fff}
+  .btn.primary:hover{background:#128a3e;text-decoration:none}
+  .btn.ghost{border-color:var(--line);color:var(--ink)}
+  .btn.ghost:hover{border-color:var(--green);color:var(--green);text-decoration:none}
+  .hero-art{position:relative}
+  .hero-art img{width:100%;height:auto;display:block;filter:drop-shadow(0 24px 50px rgba(12,40,24,.16))}
+  @media(max-width:860px){
+    .hero .wrap{grid-template-columns:1fr;padding:64px 24px 56px}
+    .hero-art{order:-1;max-width:520px}
+  }
+
+  /* ---------- Sections ---------- */
+  section.feat{padding:88px 0;border-bottom:1px solid var(--line)}
+  section.feat:nth-child(even){background:var(--paper-2)}
+  .feat .wrap{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+  .feat.flip .copy{order:2}
+  .feat h2{font-size:clamp(1.9rem,3.4vw,2.6rem);margin-bottom:18px}
+  .feat .copy p{color:var(--ink-soft);margin:0 0 16px}
+  .art{position:relative;text-align:center}
+  .art img{max-width:100%;height:auto;display:block;margin:0 auto}
+  .art.card img{
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;
+    box-shadow:0 18px 44px rgba(12,40,24,.10);
+  }
+  .tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .tag{font-family:var(--mono);font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-soft)}
+  .tag.green{border-color:rgba(22,163,74,.35);color:var(--green);background:rgba(22,163,74,.06)}
+  .tag.red{border-color:rgba(224,86,79,.35);color:var(--red);background:rgba(224,86,79,.06)}
+  .stat{display:inline-flex;align-items:baseline;gap:10px;margin-top:8px}
+  .stat b{font-family:var(--serif);font-size:2.6rem;color:var(--green);line-height:1}
+  .stat span{color:var(--muted);font-size:.95rem}
+  @media(max-width:860px){
+    .feat .wrap{grid-template-columns:1fr;gap:32px}
+    .feat.flip .copy{order:0}
+  }
+
+  /* ---------- Pipeline (full width art) ---------- */
+  .pipeline{padding:88px 0;text-align:center;border-bottom:1px solid var(--line)}
+  .pipeline h2{font-size:clamp(1.9rem,3.4vw,2.6rem);margin-bottom:14px}
+  .pipeline .lead{margin:0 auto 38px}
+  .pipeline img{width:100%;max-width:1000px;height:auto;border-radius:var(--radius);box-shadow:0 18px 44px rgba(12,40,24,.12)}
+
+  /* ---------- Footer ---------- */
+  footer{padding:64px 0 56px;background:var(--ink);color:#cdd8d1}
+  footer .wrap{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:start}
+  footer .word{height:26px;margin-bottom:16px;filter:none}
+  footer p{margin:0 0 10px;color:#9fb0a7;font-size:14.5px;max-width:46ch}
+  footer a{color:var(--green-bright)}
+  footer .links{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+  footer .copyright{grid-column:1/-1;margin-top:34px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08);color:#7c8c83;font-size:13px}
+  @media(max-width:720px){footer .wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Quip Network">
+      <img class="mark" src="assets/quip-mark.png" alt="" />
+      <img class="word" src="assets/quip-logo.png" alt="quip" />
+    </a>
+    <nav>
+      <a href="#landscape">Landscape</a>
+      <a href="#qubo">QUBO</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#edge">The edge</a>
+      <a href="https://quip.network/" target="_blank" rel="noopener">quip.network ↗</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="top">
+  <div class="bg" aria-hidden="true"></div>
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Quip Network · Quantum Asset Selection</p>
+      <h1>Pick the basket on a <span class="accent">quantum computer.</span></h1>
+      <p class="tagline">
+        We frame the portfolio as a <strong>QUBO</strong> — assets as nodes, couplings as edges —
+        then race classical and quantum solvers for the best allocation.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="#landscape">See how it works</a>
+        <a class="btn ghost" href="https://quip.network/" target="_blank" rel="noopener">The shared quantum computer ↗</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <img src="assets/wells.png" alt="Assets as wells on a quantum cost surface, with reinforcing and opposing couplings" />
+    </div>
+  </div>
+</section>
+
+<!-- ============== 1. LANDSCAPE ============== -->
+<section class="feat" id="landscape">
+  <div class="wrap">
+    <div class="copy">
+      <p class="eyebrow">Asset selection as an optimization landscape</p>
+      <h2>Find the lowest point on the cost surface</h2>
+      <p>
+        Every basket is a point on a surface shaped by expected return, risk, and market
+        conditions. The optimizer descends toward the deepest wells — the allocations that
+        cost the least to hold and trade.
+      </p>
+      <div class="tags">
+        <span class="tag green">deeper well = more optimal allocation</span>
+      </div>
+    </div>
+    <div class="art">
+      <img src="assets/cost-surface.png" alt="A mesh cost surface with several wells, each marked by a point" />
+    </div>
+  </div>
+</section>
+
+<!-- ============== 2. QUBO GRAPH ============== -->
+<section class="feat flip" id="qubo">
+  <div class="wrap">
+    <div class="copy">
+      <p class="eyebrow">Formulating the QUBO</p>
+      <h2>A graph of assets and their couplings</h2>
+      <p>
+        Nodes are assets; each carries a weight <strong>h</strong> (its standalone appeal).
+        Edges are the <strong>J</strong> couplings between assets — how holding one affects another.
+      </p>
+      <p>Topology is irregular — a node can couple to many others, not just four.</p>
+      <div class="tags">
+        <span class="tag green">positive J — reinforcing</span>
+        <span class="tag red">negative J — opposing</span>
+      </div>
+    </div>
+    <div class="art">
+      <img src="assets/qubo-graph.png" alt="A graph of crypto assets connected by reinforcing (green) and opposing (red) couplings" />
+    </div>
+  </div>
+</section>
+
+<!-- ============== 3. PIPELINE ============== -->
+<section class="pipeline" id="pipeline">
+  <div class="wrap">
+    <p class="eyebrow">From problem to persisted portfolio</p>
+    <h2>One straight line: estimate → solve → report</h2>
+    <p class="lead">
+      Build a <code>PortfolioProblem</code> from recent returns (μ = trend, Σ = risk) and the
+      slider knobs (γ, w_max, w_min); race the solvers for the best feasible weights; value money
+      at spot, split it into token units, save, and report.
+    </p>
+    <img src="assets/pipeline.png" alt="Six-step pipeline: build problem, race solvers, reallocate, persist, report, emit events" />
+  </div>
+</section>
+
+<!-- ============== 4. EDGE / SLIPPAGE ============== -->
+<section class="feat" id="edge">
+  <div class="wrap">
+    <div class="copy">
+      <p class="eyebrow">Why pool optimization pays off</p>
+      <h2>Less slippage now, more capital later</h2>
+      <p>
+        Optimizing across the pool routes weight toward the assets that are cheapest to trade
+        under current conditions — so each rebalance loses less to slippage.
+      </p>
+      <p>
+        That edge compounds: you still buy the least-weighted assets, but you keep more of every
+        dollar over the long run.
+      </p>
+      <div class="stat"><b>+8.9%</b><span>capital retained vs. naive equal split (12 rebalances)</span></div>
+    </div>
+    <div class="art card">
+      <img src="assets/slippage.png" alt="Capital retained over rebalances: optimized routing vs naive equal split, +8.9% retained" />
+    </div>
+  </div>
+</section>
+
+<!-- ============== 5. DEEPEST WELLS ============== -->
+<section class="feat flip">
+  <div class="wrap">
+    <div class="copy">
+      <p class="eyebrow">Assets as wells, constraints as nodes</p>
+      <h2>The optimizer settles into the deepest wells</h2>
+      <p>
+        Each asset bends the cost surface into a well; couplings
+        (<span style="color:var(--green)">green = reinforcing</span>,
+        <span style="color:var(--red)">red = opposing</span>) and the constraint nodes between
+        them shape it.
+      </p>
+      <p>The search settles into <strong>ZEC</strong> and <strong>SOL</strong> — the two deepest wells.</p>
+    </div>
+    <div class="art">
+      <img src="assets/wells.png" alt="Crypto assets rendered as wells on a 3D cost surface, with ZEC and SOL deepest" />
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div>
+      <img class="word" src="assets/quip-logo-white.png" alt="quip" />
+      <p>The world's shared quantum computer. We bring quantum optimization to portfolios — framing the basket as a QUBO and racing classical and quantum solvers for the best allocation.</p>
+    </div>
+    <div class="links">
+      <a href="https://quip.network/" target="_blank" rel="noopener">quip.network ↗</a>
+      <a href="#top">Back to top</a>
+    </div>
+    <div class="copyright">
+      © <span id="yr">2026</span> Quip Network — built by the engineers behind
+      <a href="https://quip.network/" target="_blank" rel="noopener">Quip Network</a>,
+      the world's shared quantum computer. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+</body>
+</html>
