@@ -10,6 +10,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..financial.basket import AssetClass
+
 
 class SliderValues(BaseModel):
     """The three strategy sliders, all 0–100 from the UI.
@@ -114,3 +116,26 @@ class OptimizeRequest(BaseModel):
 
     sliders: SliderValues | None = None
     assets: list[str] | None = None
+
+
+# -----------------------------------------------------------------------------
+# Market data
+# -----------------------------------------------------------------------------
+
+
+class MarketAsset(BaseModel):
+    ticker: str
+    name: str
+    asset_class: AssetClass = Field(alias="assetClass")
+    mu: float
+    units: float
+    usd: float
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class MarketResult(BaseModel):
+    agent_id: str = Field(alias="agentId")
+    assets: list[MarketAsset]
+
+    model_config = ConfigDict(populate_by_name=True)

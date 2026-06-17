@@ -81,6 +81,26 @@ def test_websocket_streams_agent_update():
             assert {"plUSD", "plPct", "total"} <= set(update)
 
 
+def test_market_returns_asset_data_for_basket():
+    with TestClient(create_app()) as client:
+        agent_id = _create(client)
+        response = client.get(f"/agents/{agent_id}/market")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["agentId"] == agent_id
+        tickers_returned = {a["ticker"] for a in body["assets"]}
+        assert tickers_returned == set(_BASKET)
+        for asset in body["assets"]:
+            assert isinstance(asset["mu"], float)
+            assert asset["assetClass"] in ("crypto", "stock")
+            assert asset["units"] == 0.0  # no solve yet
+
+
+def test_market_returns_404_for_unknown_agent():
+    with TestClient(create_app()) as client:
+        assert client.get("/agents/nope/market").status_code == 404
+
+
 def test_basket_below_minimum_is_rejected():
     with TestClient(create_app()) as client:
         response = client.post(

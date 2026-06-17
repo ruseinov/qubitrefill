@@ -49,3 +49,27 @@ This skill enables **real-money transactions**. Codes deliver instantly and digi
 #### Source of truth
 
 For exhaustive enums (countries, payment methods, full endpoint list), see <https://docs.bitrefill.com>.
+
+### Pay with worst loser
+
+Vendored at [`skills/pay-with-loser/SKILL.md`](skills/pay-with-loser/SKILL.md). Delegates purchase mechanics to the bitrefill skill above and adds portfolio selection on top.
+
+**Triggers:** "pay with my worst performer", "dump my biggest loser on a gift card", "use my worst crypto to buy X".
+
+**Requires:** portfolio backend running at `http://127.0.0.1:8000` with an existing optimized agent. Uses the `GET /agents/{id}/market` endpoint (see below) to retrieve per-asset μ and holdings, then picks the crypto with lowest expected return that Bitrefill can accept as payment. After purchase, retuning drops the spent asset from the basket.
+
+#### `GET /agents/{agent_id}/market`
+
+Returns per-asset expected return (μ) and current holdings for an agent:
+
+```json
+{
+  "agentId": "abc12345",
+  "assets": [
+    {"ticker": "BTC", "name": "Bitcoin", "assetClass": "crypto", "mu": 0.0012, "units": 0.05, "usd": 3200.0},
+    {"ticker": "ETH", "name": "Ethereum", "assetClass": "crypto", "mu": -0.0003, "units": 1.2, "usd": 3600.0}
+  ]
+}
+```
+
+Pre-solve: falls back to the agent's configured basket with `units=0`. Post-solve: reflects actual holdings. μ is the annualised hourly expected return over the last 7 days (`MU_WINDOW_HOURS=168`).
