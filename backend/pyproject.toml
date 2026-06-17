@@ -1,0 +1,53 @@
+[project]
+name = "qtw-tradinggame-backend"
+version = "0.0.1"
+description = "Backend for QTW 2026 Trading Competition — Quip Network booth activation"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pydantic>=2.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "httpx>=0.27",
+    "gurobipy>=11.0",
+    "dwave-neal>=0.6",
+    "dwave-system>=1.20",
+]
+
+[project.scripts]
+qtw = "backend.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+# This is a math-heavy codebase: identifiers deliberately mirror the optimization
+# spec (N assets, K cardinality, Σ→Sigma, D, Q, A_obj, λ→lambda_K, …) and the
+# derivation docstrings. The pep8-naming rules that fight that notation are
+# disabled rather than mangling the math into lowercase. SolverFailed (N818) keeps
+# its documented name from the handoff conventions.
+ignore = ["E501", "N802", "N803", "N806", "N815", "N818"]
