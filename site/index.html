@@ -52,8 +52,8 @@
   }
   .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
   .brand{display:flex;align-items:center;gap:11px}
-  .brand img.mark{width:26px;height:26px}
-  .brand img.word{height:19px;margin-top:3px}
+  .brand .name{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+  .brand .name b{color:var(--green);font-weight:600}
   .nav nav{display:flex;gap:26px;font-size:14.5px}
   .nav nav a{color:var(--ink-soft);font-weight:500}
   .nav nav a:hover{color:var(--green);text-decoration:none}
@@ -133,9 +133,8 @@
 
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="Quip Network">
-      <img class="mark" src="assets/quip-mark.png" alt="" />
-      <img class="word" src="assets/quip-logo.png" alt="quip" />
+    <a class="brand" href="#top" aria-label="Qubitrefill">
+      <span class="name">Qu<b>bit</b>refill</span>
     </a>
     <nav>
       <a href="#landscape">Landscape</a>
@@ -151,11 +150,12 @@
   <div class="bg" aria-hidden="true"></div>
   <div class="wrap">
     <div>
-      <p class="eyebrow">Quip Network · Quantum Asset Selection</p>
-      <h1>Pick the basket on a <span class="accent">quantum computer.</span></h1>
+      <p class="eyebrow">Bitrefill · Quantum Asset Selection</p>
+      <h1>Pay <a href="https://www.bitrefill.com" target="_blank" rel="noopener">Bitrefill</a> with <span class="accent">quantum-picked</span> crypto.</h1>
       <p class="tagline">
-        We frame the portfolio as a <strong>QUBO</strong> — assets as nodes, couplings as edges —
-        then race classical and quantum solvers for the best allocation.
+        We frame your portfolio as a <strong>QUBO</strong> — assets as nodes, couplings as edges —
+        then race classical and quantum solvers to choose the best crypto to spend on gift cards,
+        mobile top-ups, and eSIMs.
       </p>
       <div class="cta">
         <a class="btn primary" href="#landscape">See how it works</a>
