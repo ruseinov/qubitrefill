@@ -1,10 +1,10 @@
 ---
 name: qupick
 description: "This skill uses quantum computers to pick the best crypto asset to pay with, given current market conditions."
-compatibility: "Requires: (1) a running portfolio backend at http://127.0.0.1:8000; (2) Bitrefill MCP (https://api.bitrefill.com/mcp) or CLI available; (3) a local skills/qupick/config.json (see config.example.json). Delegates all purchase mechanics to the bitrefill skill."
+compatibility: "Requires: (1) the qupick MCP server (the portfolio backend served at http://127.0.0.1:8000/mcp), exposing mcp__qupick__* tools; (2) Bitrefill MCP (https://api.bitrefill.com/mcp) or CLI available; (3) a local skills/qupick/config.json (see config.example.json). Delegates all purchase mechanics to the bitrefill skill."
 metadata:
   author: hackathon
-  version: "4.0.0"
+  version: "5.1.0"
 ---
 
 # Pay with most suitable crypto asset in your portfolio
@@ -15,32 +15,49 @@ Delegates all purchase mechanics to the [`bitrefill`](../bitrefill/SKILL.md) ski
 
 The flow is designed to stop for the user in **exactly one** place — the purchase approval (step 6). Defaults, a config file, and a permission allowlist remove the other interruptions.
 
-## Calling conventions (curl)
+## Calling conventions (MCP tools)
 
-The Claude Code permission allowlist scopes `curl` by **URL prefix**, and prefix matching only works if the URL is the first argument. **Always write the URL immediately after `curl`,** then flags:
+The backend is the **qupick MCP server** (served by the portfolio backend at
+`http://127.0.0.1:8000/mcp`). Drive it with `mcp__qupick__*` tools — **no `curl`**. The six
+tools are allowlisted, so none of them prompt:
+
+| Tool | Does |
+|------|------|
+| `mcp__qupick__ping_backend` | liveness probe (public) |
+| `mcp__qupick__register_agent` | create an agent; the API key is **emailed** (public) |
+| `mcp__qupick__get_agent` | fetch the authenticated agent's config (basket, sliders) |
+| `mcp__qupick__optimize` | optimise / retune the authenticated agent |
+| `mcp__qupick__get_market` | live holdings + μ for the authenticated agent |
+| `mcp__qupick__get_leaderboard` | scoreboard (public) |
+
+**Auth.** Every per-agent tool (`get_agent`, `optimize`, `get_market`) carries the agent's API
+key as `Authorization: Bearer <key>`, configured once in `.mcp.json`
+(`"Authorization": "Bearer ${QUPICK_API_KEY}"`). Set `QUPICK_API_KEY` to the key from
+registration (see step 2). The public tools work without it.
+
+The only `curl` left in this flow is the read-only Bitrefill balance endpoint (step 5b):
 
 ```bash
-curl http://127.0.0.1:8000/agents/{id}/market
-curl http://127.0.0.1:8000/agents/{id}/optimize -X POST -H "Content-Type: application/json" -d '{...}'
 curl https://api.bitrefill.com/v2/accounts/balance -H "Authorization: Bearer $BITREFILL_API_KEY"
 ```
 
-Allowlisted (no prompt): the local backend (`http://127.0.0.1:8000/*`) and the read-only Bitrefill balance endpoint. **Not allowlisted** (will prompt): any other Bitrefill REST URL — in particular `POST /v2/invoices`. Real purchases go through the bitrefill skill's `buy-products`, which is also deliberately not allowlisted, so the approval gate in step 6 always fires.
+That one is allowlisted (write the URL first so prefix matching works). Real purchases go through
+the bitrefill skill's `buy-products`, deliberately **not** allowlisted, so the approval gate in
+step 6 always fires.
 
-## Backend API reference
+## Backend tool reference
 
-Base URL: `http://127.0.0.1:8000`
+MCP server: `qupick` (the backend at `http://127.0.0.1:8000/mcp`). Tools return JSON; a failed
+per-agent call surfaces the backend's `{"detail": "..."}` (e.g. `401` when `QUPICK_API_KEY` is
+unset/wrong, `422` on validation, `503` on no feasible solution).
 
-All endpoints are JSON over HTTP. Error responses follow FastAPI's default shape:
-`{"detail": [...]}` for validation errors (422) or `{"detail": "..."}` for app errors.
+### `register_agent` — create agent (public)
 
-### POST /agents — create agent
-
-**Request body** (`AgentConfig`, `name` + `sliders` required):
+**Arguments** (`name`, `email`, `sliders` all required):
 ```json
 {
   "name": "string",
-  "email": "string | null",
+  "email": "you@example.com",
   "handle": "string | null",
   "sliders": {
     "rebalanceFrequency": 50,
@@ -51,29 +68,34 @@ All endpoints are JSON over HTTP. Error responses follow FastAPI's default shape
 }
 ```
 
-`SliderValues` constraints — **all three fields are required**, each a number 0–100:
+`email` is **required and unique**. `SliderValues` — **all three required**, each 0–100:
 - `rebalanceFrequency` — how often the agent rebalances (0 = rarely, 100 = hourly max)
 - `riskPreference` — risk-aversion term γ (0 = conservative, 100 = aggressive)
 - `maxPositionSize` — per-asset weight cap (0 = equal-weight 1/n, 100 = up to ~50% in one asset)
 
 Default sensible values when the user hasn't expressed a preference: `{"rebalanceFrequency": 50, "riskPreference": 50, "maxPositionSize": 50}`.
 
-**Response** (`SubmitAgentResponse`):
+**Returns** (`RegistrationResponse`) — the API key is **emailed, never returned**:
 ```json
 {
-  "agentId": "afae79c9",
-  "qrUrl": "https://qtw-tradinggame.netlify.app/p/afae79c9",
+  "message": "Check your email for your API key.",
+  "email": "you@example.com",
   "bankroll": 10000.0
 }
 ```
 
-### GET /agents/{agent_id} — fetch agent config
+In local dev (no `RESEND_API_KEY` on the backend) the key is **printed to the backend console**:
+`[email:console] API key for <name> <<email>>: <key>`.
 
-**Response** (`AgentConfig`): same shape as the POST request body. Use this to retrieve the current asset basket when re-using an existing agent.
+### `get_agent` — fetch agent config (authed)
 
-### POST /agents/{agent_id}/optimize — optimise (and optionally retune)
+**Returns** (`AgentConfig`): name, handle, email, `sliders`, and the current `assets` basket. Use
+it to retrieve the basket when re-using an agent — and as the **"am I registered?" probe**: a
+success means the configured key is valid; a 401 means register (or set `QUPICK_API_KEY`) first.
 
-**Request body** (entirely optional — omit body for a plain re-optimise with no changes):
+### `optimize` — optimise (and optionally retune) (authed)
+
+**Arguments** (entirely optional — omit for a plain re-optimise with no changes):
 ```json
 {
   "sliders": { ... },
@@ -81,9 +103,11 @@ Default sensible values when the user hasn't expressed a preference: `{"rebalanc
 }
 ```
 
-Both `sliders` and `assets` are individually optional. If `assets` is provided the agent's basket is replaced atomically before solving — this is the retune path. A retune liquidates all existing holdings and reallocates over the new basket.
+Both `sliders` and `assets` are individually optional. If `assets` is provided the agent's basket
+is replaced atomically before solving — this is the retune path. A retune liquidates all existing
+holdings and reallocates over the new basket.
 
-**Response** (`RoutingResult`):
+**Returns** (`RoutingResult`):
 ```json
 {
   "provider": "Gurobi",
@@ -102,12 +126,11 @@ Both `sliders` and `assets` are individually optional. If `assets` is provided t
 
 `providerType` is `"QPU"` or `"CPU"` — tells you whether a quantum solver was used.
 
-### GET /agents/{agent_id}/market — live holdings + μ values
+### `get_market` — live holdings + μ values (authed)
 
-**Response** (`MarketResult`):
+**Returns** (`MarketResult`) — the authenticated agent's own holdings (no id echoed):
 ```json
 {
-  "agentId": "afae79c9",
   "assets": [
     {
       "ticker": "BTC",
@@ -123,14 +146,14 @@ Both `sliders` and `assets` are individually optional. If `assets` is provided t
 
 `assetClass` is `"crypto"` or `"stock"`. `mu` is the annualised expected return — negative means the asset is expected to lose value.
 
-### GET /leaderboard — hackathon scoreboard
+### `get_leaderboard` — scoreboard (public)
 
-Returns an array of `LeaderboardEntry`:
+Returns an array of `LeaderboardEntry` (no `agentId` — the id is the secret API key and never
+appears on the public board):
 ```json
 [
   {
     "rank": 1,
-    "agentId": "afae79c9",
     "name": "string",
     "handle": "string | null",
     "total": 10423.50,
@@ -158,7 +181,6 @@ Load `skills/qupick/config.json` (mirror of the committed `config.example.json`)
 
 ```json
 {
-  "agentId": "afae79c9",
   "defaults": {
     "name": "Konrad",
     "email": "konrad@postquant.xyz",
@@ -175,11 +197,13 @@ Load `skills/qupick/config.json` (mirror of the committed `config.example.json`)
 }
 ```
 
-- `agentId` — reuse this agent (skip creation). `null`/absent → create one in step 2 and **write the returned id back into `config.json`**.
+- Identity is **not** in `config.json`. The agent's API key lives in `QUPICK_API_KEY` (read by
+  `.mcp.json` as the `Authorization: Bearer` header). "Already registered?" is answered by
+  `get_agent` succeeding, not by a stored id.
 - `defaults` — name / email / country / sliders, used only when creating a new agent and for product country.
 - `funding.priority` — settlement order (see step 5). `funding.fee_buffer_pct` — coverage buffer (default 2). `funding.on_shortfall` — `reject` | `confirm`.
 - `denomination.policy` — `smallest_gte` auto-picks the smallest package ≥ the requested amount.
-- `backend.marketDataSource` — `MARKET_DATA_SOURCE` for the backend auto-start (step 2). Default `synthetic` (deterministic, offline). Absent → `synthetic`.
+- `backend.marketDataSource` — the `MARKET_DATA_SOURCE` the backend runs with. The docker-compose stack sets `synthetic` (deterministic, offline) on the `backend` service; to use another source, edit that env before `docker compose up`. Absent → `synthetic`.
 
 **If `config.json` is missing or malformed, do not crash.** Fall back to the fully-interactive behaviour: ask the user for name/email, ask which denomination, treat `funding.priority` as `["onchain_match"]` (on-chain only), and note that no config was found.
 
@@ -203,51 +227,55 @@ The set of cryptos the Bitrefill account can pay with is fixed. No live "list pa
 
 Any portfolio asset whose ticker is not in this table cannot be spent on Bitrefill and is dropped silently.
 
-### 2. Seed the agent (REST)
+### 2. Seed the agent (MCP)
 
-**Backend health check (offer to start).** Before the first backend call, probe it:
+**Server up?** The qupick MCP server rides on the backend over HTTP, so the backend must be up
+**when the session started** for the `mcp__qupick__*` tools to be registered. Two cases:
 
-```bash
-curl http://127.0.0.1:8000/leaderboard
+- **Tools present:** call `mcp__qupick__ping_backend` → `{"ok": true}` and proceed.
+- **`mcp__qupick__*` tools missing** (server was down at session start): **offer to start it**, and on
+  the user's yes bring up the full stack (Postgres + backend) with docker compose from the repo root:
+
+  ```bash
+  docker compose up -d --build
+  ```
+
+  The backend opens a Postgres connection on startup, so a bare `uvicorn` process is **not** enough —
+  compose starts the `db` and `backend` services together, with `MARKET_DATA_SOURCE=synthetic`
+  (deterministic, offline) and the console email sender. Cold start (image build + DB healthcheck)
+  takes ~20s; poll `docker compose ps` until `backend` is healthy (or `curl http://127.0.0.1:8000/healthz`).
+  **Then the user must reconnect the MCP server** (run `/mcp` in Claude Code) so the qupick tools
+  register — they won't appear mid-session otherwise. If the user declines, stop with the manual
+  command. Do not auto-start without the user's yes.
+
+**Already registered?** Call `mcp__qupick__get_agent`:
+
+- **Succeeds** → the configured `QUPICK_API_KEY` is valid. Read the returned `assets` basket; skip
+  creation.
+- **401** → no valid key. Either `QUPICK_API_KEY` is unset/stale, or there is no agent yet —
+  create one (below).
+
+**Create.** Seed over the available Bitrefill currencies, using `config.defaults`:
+
 ```
-
-If it answers (even `[]`), proceed. If the connection is refused, the backend is down — **offer to start it**, and on the user's yes, launch it backgrounded and poll until ready. Use `config.backend.marketDataSource` (default `synthetic`) for the data source:
-
-```bash
-env MARKET_DATA_SOURCE=synthetic uv run --directory backend uvicorn backend.api.app:app --workers 1 --port 8000
-```
-
-Run it as a background process, then poll `curl http://127.0.0.1:8000/leaderboard` every ~1s until it responds (cold start can take a few seconds; a first `503 no feasible solution ... before deadline` on a later optimise is normal — retry once). If the user declines, or the backend never comes up, stop with an actionable message and the manual command. Do not auto-start without the user's yes.
-
-The default `synthetic` start command is allowlisted, so the user's yes is the only stop. A non-default `marketDataSource` produces a different command that the harness will prompt for once.
-
-If `config.agentId` is set, fetch the current config to read the existing basket — skip creation:
-
-```bash
-curl http://127.0.0.1:8000/agents/{agentId}
-```
-
-If this returns **404 `agent not found`** (a stale id, or a freshly restarted in-memory backend), the configured agent no longer exists — fall through to the create path below **and overwrite `config.agentId`** with the new id. Treat 404 exactly like an absent id; do not stop.
-
-If `config.agentId` is `null`/absent (or 404'd above), create one seeded over the available Bitrefill currencies, using `config.defaults`:
-
-```bash
-curl http://127.0.0.1:8000/agents -X POST -H "Content-Type: application/json" -d '{
+mcp__qupick__register_agent({
   "name": "<config.defaults.name>",
   "email": "<config.defaults.email>",
   "sliders": {"rebalanceFrequency": 50, "riskPreference": 50, "maxPositionSize": 50},
   "assets": ["BTC", "ETH", "BNB", "SOL", "XRP", "USDT", "USDC", "DOGE", "ZEC", "ALGO", "FIL"]
-}'
-# → { "agentId": "<id>", "qrUrl": "...", "bankroll": 10000.0 }
+})
+# → { "message": "Check your email for your API key.", "email": "...", "bankroll": 10000.0 }
 ```
 
-**Write the returned `agentId` back into `config.json`.** Then optimise immediately (no body needed for first run):
+The API key is **emailed, not returned**. Retrieve it — from the email, or in local dev (no
+`RESEND_API_KEY`) from the backend container logs (`docker compose logs backend`), line
+`[email:console] API key for <name> <<email>>: <key>` — then **set `QUPICK_API_KEY` to it and
+reconnect the MCP server (`/mcp`)** so the per-agent tools authenticate.
+Once `get_agent` succeeds, optimise immediately for the first solve (no arguments):
 
-```bash
-curl http://127.0.0.1:8000/agents/{agentId}/optimize -X POST
 ```
-
-`agentId` is used in every subsequent call.
+mcp__qupick__optimize({})
+```
 
 ### 3. Pick the product (MCP)
 
@@ -259,13 +287,13 @@ Use the bitrefill skill's `search-products` (with `country = config.defaults.cou
   - `smallest_gte` (default) — given a target amount, auto-select the smallest package whose value is ≥ the target. No user prompt.
   - if no policy/config — ask the user which denomination.
 
-### 4. Fetch market (REST)
+### 4. Fetch market (MCP)
 
-```bash
-curl http://127.0.0.1:8000/agents/{agentId}/market
+```
+mcp__qupick__get_market({})
 ```
 
-Returns the current USD value and μ for every asset in the basket.
+Returns the current USD value and μ for every asset in the authenticated agent's basket.
 
 ### 5. Select the loser, then resolve the funding waterfall
 
@@ -279,7 +307,7 @@ Selection and settlement are **separate**. Selection always runs and is never by
 
 The **loser** is `min(μ)` across these candidates. If there are no spendable crypto candidates at all, **hard stop** — tell the user and do not silently substitute a stablecoin.
 
-**5b. Settlement waterfall.** Let `price = denomination_price_usd × (1 + funding.fee_buffer_pct/100)`. Read live balances (`GET /accounts/balance`, see above). Walk `funding.priority` in order and take the **first source that covers the full `price`** — no invoice splitting (a Bitrefill invoice takes one payment method):
+**5b. Settlement waterfall.** Let `price = denomination_price_usd × (1 + funding.fee_buffer_pct/100)`. For account balances, **prefer the `account_balances` block already returned by `product-details` in step 3** — each entry's `equivalent_in_product_currency` is pre-converted to the product's currency, so it compares directly against `price` (no FX maths). The standalone `GET /accounts/balance` endpoint above is the fallback when product-details omits it. Walk `funding.priority` in order and take the **first source that covers the full `price`** — no invoice splitting (a Bitrefill invoice takes one payment method):
 
 | Token | Source | Pays via | Sells loser? | Retune? |
 |-------|--------|----------|--------------|---------|
@@ -318,16 +346,16 @@ After explicit approval, use the bitrefill skill to buy, mapping the chosen toke
 
 Then `get-order-by-id` for the redemption code / QR. Log: `invoice_id`, product, amount, chosen funding token, payment method.
 
-### 7. Retune (REST) — only if the loser was sold
+### 7. Retune (MCP) — only if the loser was sold
 
 Retune **only** when settlement used `account_match` or `onchain_match` (the loser was actually sold). If settlement used `account_fiat`, **skip the retune** and report: "paid from fiat balance; portfolio unchanged."
 
 When retuning, remove the spent ticker from the basket and re-optimise (pass only `assets`; omit `sliders` to keep existing values):
 
-```bash
-curl http://127.0.0.1:8000/agents/{agentId}/optimize -X POST -H "Content-Type: application/json" -d '{
+```
+mcp__qupick__optimize({
   "assets": ["BTC", "BNB", "SOL", "..."]
-}'
+})
 ```
 
 (The list is the current basket minus the spent ticker.) Report the new allocation: what was kept, what was dropped, new `portfolio` percentages.
@@ -336,16 +364,16 @@ curl http://127.0.0.1:8000/agents/{agentId}/optimize -X POST -H "Content-Type: a
 
 > "Buy a $20 Steam gift card and dump my worst crypto"
 
-1. **Config** — `config.json` has `agentId = afae79c9`, `funding.priority = ["account_match","onchain_match","account_fiat"]`, `denomination.policy = smallest_gte`.
+1. **Config** — `config.json` has `funding.priority = ["account_match","onchain_match","account_fiat"]`, `denomination.policy = smallest_gte`; `QUPICK_API_KEY` is set.
 2. **Currencies** — static map gives 11 tickers.
-3. **Agent** — `agentId` present → `GET /agents/afae79c9` for the basket; skip creation.
+3. **Agent** — `get_agent` succeeds → read the basket; skip creation.
 4. **Product** — `search-products("Steam", country="US")` → `steam-usa`; `product-details` → `smallest_gte($20)` picks `package_id = steam-usa<&>20`, price $21.60, accepts `bitcoin`/`ethereum`/`solana`/`usdc_base`.
-5. **Market** — `GET /agents/afae79c9/market` → BTC (μ=−0.0026, $227), ETH (μ=+0.0001, $227), SOL (μ=−0.0003, $227), USDC (μ=+0.00005, $2272).
+5. **Market** — `get_market({})` → BTC (μ=−0.0026, $227), ETH (μ=+0.0001, $227), SOL (μ=−0.0003, $227), USDC (μ=+0.00005, $2272).
 6. **Select** — all four spendable + accepted. Worst μ = **BTC**. `price = 21.60 × 1.02 = $22.03`.
-7. **Waterfall** — `GET /accounts/balance`: account BTC $60 (covers $22.03) → `account_match` wins. Sells the loser → will retune.
+7. **Waterfall** — product-details `account_balances`: account BTC ≈ $60 (covers $22.03) → `account_match` wins. Sells the loser → will retune.
 8. **Confirm** — "Steam USD $20 · loser BTC (μ=−0.0026) · settle Bitrefill account BTC ($60) · sells loser ✓ · will retune · Approve?"
 9. **Buy** — `buy-products(..., payment_method="balance", auto_pay=true)` → instant → redemption code.
-10. **Retune** — `POST /agents/afae79c9/optimize {"assets": ["ETH","BNB","SOL","XRP","USDT","USDC","DOGE","ZEC","ALGO","FIL"]}` (BTC dropped).
+10. **Retune** — `optimize({"assets": ["ETH","BNB","SOL","XRP","USDT","USDC","DOGE","ZEC","ALGO","FIL"]})` (BTC dropped).
 
 ## Safeguards
 
@@ -353,7 +381,7 @@ This skill executes real-money purchases. See [`skills/bitrefill/references/safe
 - Confirm before every purchase — step 6 is the single, non-negotiable approval stop. `buy-products` is deliberately **not** on the Claude Code allowlist, so the harness also prompts.
 - Stop before `buy-products` unless the user opts into a real purchase (real money).
 - Treat codes as cash — never log or paste redemption codes in public channels.
-- Use a dedicated low-balance account. `config.json` (real `agentId` / email) is gitignored.
+- Use a dedicated low-balance account. `config.json` (real email) and `QUPICK_API_KEY` (the agent's secret key) are local-only — `config.json` is gitignored and the key never goes in git.
 - Log every purchase: `invoice_id`, product, amount, funding token, method.
 
 The retune in step 7 is irreversible — when it fires, the spent asset is removed from the basket permanently until the user re-adds it manually. It fires only when the loser was actually sold (`account_match` / `onchain_match`).
