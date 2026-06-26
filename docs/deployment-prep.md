@@ -20,6 +20,7 @@ Locked choices that the rest of this doc assumes:
 | **Audience** | **Internal-only** | Per-agent bearer auth is sufficient; rate-limiting public registration is a nice-to-have, not a launch blocker. |
 | **Schema** | Keep startup `create_all` | Fastest to launch; no migration tooling yet (see §7). Re-evaluate before the first schema change. |
 | **Subdomain** | e.g. `qupick.quip.network` | Pointed at the droplet; image pushed to `registry.gitlab.com/quip.network/qupick` (amd64). |
+| **Solvers** | **SA-only for v1 (PoC/MVP)** | `GUROBI_IN_RACE=0` (no Gurobi license in prod) and `DWAVE_API_TOKEN` unset (no QPU cost). Simulated annealing is the entire race field and always runs. Reversible later via env alone — re-add Gurobi or the QPU without a code change or image rebuild. |
 
 ---
 
