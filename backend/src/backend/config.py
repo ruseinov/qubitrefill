@@ -147,7 +147,7 @@ DATABASE_URL: str = os.environ.get(
 # falls back to a console logger (dev/offline).
 SMTP_HOST: str = os.environ.get("SMTP_HOST", "smtp.resend.com")
 SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "")
+SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "resend")
 SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
 SMTP_STARTTLS: bool = os.environ.get("SMTP_STARTTLS", "true").lower() != "false"
 EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "Qubitrefill <noreply@quip.network>")

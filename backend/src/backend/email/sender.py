@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 from email.message import EmailMessage
-from email.utils import parseaddr
 from typing import Protocol
 
 import aiosmtplib
@@ -57,7 +56,7 @@ class SmtpEmailSender:
             msg,
             hostname=config.SMTP_HOST,
             port=config.SMTP_PORT,
-            username=config.SMTP_USERNAME or parseaddr(config.EMAIL_FROM)[1],
+            username=config.SMTP_USERNAME,
             password=config.SMTP_PASSWORD,
             start_tls=config.SMTP_STARTTLS,
             timeout=10.0,

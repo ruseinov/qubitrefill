@@ -54,15 +54,17 @@ async def test_smtp_sender_delivers_key_over_starttls(monkeypatch):
     assert capture.kwargs["start_tls"] is True
 
 
-async def test_sender_username_falls_back_to_from_address(monkeypatch):
+async def test_sender_uses_configured_username_verbatim(monkeypatch):
+    # Resend requires the literal username "resend"; the sender must pass
+    # SMTP_USERNAME through unchanged rather than deriving it from EMAIL_FROM.
     capture = _CapturingSend()
     monkeypatch.setattr(sender_mod.aiosmtplib, "send", capture)
-    monkeypatch.setattr(config, "SMTP_USERNAME", "")
+    monkeypatch.setattr(config, "SMTP_USERNAME", "resend")
     monkeypatch.setattr(config, "EMAIL_FROM", "Qubitrefill <noreply@quip.network>")
 
     await SmtpEmailSender().send_api_key("agent@example.com", "Ada", "key-123")
 
-    assert capture.kwargs["username"] == "noreply@quip.network"
+    assert capture.kwargs["username"] == "resend"
 
 
 def test_get_email_sender_uses_smtp_when_password_present(monkeypatch):
