@@ -57,6 +57,8 @@ async def test_smtp_sender_delivers_key_over_starttls(monkeypatch):
 
 
 async def test_smtp_sender_uses_configured_username(monkeypatch):
+    # Resend requires the literal username "resend"; the sender must pass
+    # SMTP_USERNAME through unchanged rather than deriving it from EMAIL_FROM.
     capture = _CapturingSend()
     monkeypatch.setattr(sender_mod.aiosmtplib, "send", capture)
     monkeypatch.setattr(config, "SMTP_USERNAME", "resend")

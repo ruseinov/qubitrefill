@@ -27,9 +27,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://qtw:qtw@db:5432/qtw
       MARKET_DATA_SOURCE: synthetic
       GUROBI_IN_RACE: "0"
-      # Optional: set SMTP_USERNAME + SMTP_PASSWORD (a Resend API key) in the
-      # host env to email API keys for real; unset → the console sender logs the
-      # key to the backend container logs.
+      # Optional: set SMTP_PASSWORD (a Resend API key) in the host env to email
+      # API keys for real; unset → the console sender logs the key to the backend
+      # container logs. SMTP_USERNAME is the literal "resend".
       SMTP_HOST: ${SMTP_HOST:-smtp.resend.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-resend}

@@ -139,10 +139,13 @@ DATABASE_URL: str = os.environ.get(
 # Email (Resend SMTP) — registration delivers the agent's API key out-of-band
 # -----------------------------------------------------------------------------
 
-# Resend's SMTP relay (smtp.resend.com:587, STARTTLS). The username is the
-# literal "resend" and the password is a Resend API key. The EMAIL_FROM domain
-# (quip.network) must be a verified sending domain in Resend. When SMTP_PASSWORD
-# is unset the sender falls back to a console logger (dev/offline).
+# Resend's SMTP submission endpoint (smtp.resend.com). The username is the
+# literal string "resend" and the password is a Resend API key. Port 587 is
+# the protocol-standard STARTTLS submission port; on hosts that block it
+# (DigitalOcean blocks outbound 25/465/587), set SMTP_PORT=2587 (Resend's alt
+# STARTTLS port) in the environment. The EMAIL_FROM domain (quip.network) must
+# be a verified sending domain in Resend. When SMTP_PASSWORD is unset the sender
+# falls back to a console logger (dev/offline).
 SMTP_HOST: str = os.environ.get("SMTP_HOST", "smtp.resend.com")
 SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "resend")
