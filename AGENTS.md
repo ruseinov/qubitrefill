@@ -12,7 +12,7 @@ qupick's purchase layer is the **Bitrefill MCP** (`https://api.bitrefill.com/mcp
 claude mcp add --transport http bitrefill https://api.bitrefill.com/mcp --scope user
 ```
 
-Optionally, the upstream **bitrefill plugin** bundles the same MCP plus the bitrefill *skill* (capability routing, CLI/browse/REST fallbacks, safeguards prose) — `/plugin install bitrefill@bitrefill-skills` (<https://github.com/bitrefill/agents>). qupick uses only the MCP tools, not the skill's mechanics.
+Optionally, the upstream **bitrefill plugin** bundles the same MCP plus the bitrefill *skill* (capability routing, CLI/browse/REST fallbacks, safeguards prose) — `/plugin install bitrefill@bitrefill-skills`, run inside Claude Code (<https://github.com/bitrefill/agents>). qupick uses only the MCP tools, not the skill's mechanics.
 
 - **Enum/endpoint source of truth:** <https://docs.bitrefill.com>
 - **Real money:** codes deliver instantly and are non-refundable. Confirm product, price, and payment method before buying; use a dedicated low-balance account; never expose high-balance accounts or wallet seeds.

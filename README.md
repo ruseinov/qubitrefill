@@ -88,9 +88,9 @@ vendored here.
    ```
 
    Optional: the upstream **bitrefill plugin** bundles the same MCP plus the bitrefill *skill*
-   (multi-channel purchase guidance) in one step — `/plugin marketplace add bitrefill/agents` →
-   `/plugin install bitrefill@bitrefill-skills` → `/reload-plugins`
-   (<https://github.com/bitrefill/agents>). qupick needs only the MCP, not the skill.
+   (multi-channel purchase guidance). Run these as slash-commands **inside Claude Code** (not a
+   shell): `/plugin marketplace add bitrefill/agents` → `/plugin install bitrefill@bitrefill-skills`
+   → `/reload-plugins` (<https://github.com/bitrefill/agents>). qupick needs only the MCP, not the skill.
 
 2. **qupick (this repo).** Claude Code discovers skills under `.claude/skills/`:
 
