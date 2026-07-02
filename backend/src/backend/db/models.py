@@ -37,6 +37,20 @@ class Agent(Base):
     created_at: Mapped[str] = mapped_column(String(64))
 
 
+class DigestState(Base):
+    """Single-row marker for the registration digest scheduler.
+
+    Holds the calendar date (UTC, ``YYYY-MM-DD``) of the last successful send so
+    the daily digest is idempotent across restarts — the row is created on first
+    send and its ``id`` is always ``1``.
+    """
+
+    __tablename__ = "digest_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)  # always 1
+    last_sent_date: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+
 class Job(Base):
     __tablename__ = "jobs"
 

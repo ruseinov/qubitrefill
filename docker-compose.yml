@@ -35,6 +35,10 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-resend}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:-Qubitrefill <noreply@quip.network>}
+      # Registration digest — daily contact-list email to the team. Empty
+      # DIGEST_RECIPIENTS ⇒ disabled (fail-closed); also inert without SMTP_PASSWORD.
+      DIGEST_RECIPIENTS: ${DIGEST_RECIPIENTS:-}
+      DIGEST_HOUR_UTC: ${DIGEST_HOUR_UTC:-7}
     ports:
       - "8000:8000"
     healthcheck:
